@@ -1,5 +1,6 @@
 import io
 import json
+import logging
 import os
 from datetime import date, datetime, timedelta
 
@@ -51,6 +52,8 @@ from modules.utils import (
     _save_upload,
     _slugify,
 )
+
+LOGGER = logging.getLogger(__name__)
 
 
 def _log_action(admin_id, action, entity_type=None, entity_id=None, details=None):
@@ -131,8 +134,18 @@ def _set_primary_product_image(conn, product_id, image_id):
     )
 
 
-def _delete_local_product_upload(image_url):
+def _delete_product_upload(image_url):
     normalized = _normalize_static_path(image_url)
+    if normalized and normalized.startswith(("http://", "https://")):
+        if ".blob.vercel-storage.com/" not in normalized:
+            return
+        from vercel.blob import BlobClient
+
+        try:
+            BlobClient().delete(normalized)
+        except Exception:
+            LOGGER.exception("Failed to delete product image blob: %s", normalized)
+        return
     prefix = "uploads/products/"
     if not normalized or not normalized.startswith(prefix):
         return
@@ -638,7 +651,7 @@ def register_admin_routes(app):
         if file_storage and _is_allowed_image_filename(file_storage.filename):
             saved = _save_upload(file_storage, "products")
             if saved:
-                _delete_local_product_upload(image["url"])
+                _delete_product_upload(image["url"])
                 url = saved
         conn.execute(
             "UPDATE product_images SET url = ?, alt_text = ?, sort_order = ?, color = ? WHERE id = ?",
@@ -673,7 +686,7 @@ def register_admin_routes(app):
         conn.commit()
         invalidate_content_cache()
         conn.close()
-        _delete_local_product_upload(image["url"])
+        _delete_product_upload(image["url"])
         return redirect(url_for("admin_product_edit", product_id=image["product_id"]))
 
     @app.route("/admin/categories", methods=["GET", "POST"])

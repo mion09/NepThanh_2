@@ -19,3 +19,4 @@ data/chroma_store/
 
 .vercel
 .env*.local
+output/

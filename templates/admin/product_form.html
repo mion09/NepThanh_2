@@ -161,7 +161,7 @@
     </div>
     <div class="admin-card">
         <h3>Ảnh sản phẩm</h3>
-        <p class="muted">Ảnh upload được lưu trong <code>static/uploads/products</code>. Chọn một ảnh đại diện để hiển thị ở danh sách sản phẩm.</p>
+        <p class="muted">Ảnh upload được lưu bền vững trên Vercel Blob khi chạy production và trong <code>static/uploads/products</code> khi chạy local. Chọn một ảnh đại diện để hiển thị ở danh sách sản phẩm.</p>
         <form method="post" enctype="multipart/form-data" action="{{ url_for('admin_product_image_new', product_id=product.id) }}" class="form-grid">
             <div class="form-group">
                 <label>Ảnh URL</label>

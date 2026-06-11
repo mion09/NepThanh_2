@@ -3,3 +3,4 @@ python-dotenv
 qrcode[pil]
 requests
 libsql
+vercel

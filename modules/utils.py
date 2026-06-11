@@ -163,9 +163,21 @@ def _save_upload(file_storage, subdir):
     filename = secure_filename(file_storage.filename)
     if not filename:
         return None
+    unique = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(3)}_{filename}"
+    if os.environ.get("VERCEL"):
+        if not os.environ.get("BLOB_READ_WRITE_TOKEN"):
+            raise RuntimeError("BLOB_READ_WRITE_TOKEN is required for uploads on Vercel.")
+        from vercel.blob import BlobClient
+
+        blob = BlobClient().put(
+            f"{subdir}/{unique}",
+            file_storage.read(),
+            access="public",
+        )
+        return blob.url
+
     target_dir = os.path.join(UPLOAD_DIR, subdir)
     os.makedirs(target_dir, exist_ok=True)
-    unique = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(3)}_{filename}"
     path = os.path.join(target_dir, unique)
     file_storage.save(path)
     rel_path = os.path.relpath(path, os.path.join(BASE_DIR, "static"))

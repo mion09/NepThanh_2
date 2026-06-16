@@ -26,25 +26,25 @@ _CONTENT_CACHE = {}
 
 CHARACTER_BLOB_ASSETS = {
     "anh-hai": {
-        "model": "https://ly2wmvyx1bvvtt8w.public.blob.vercel-storage.com/characters/models/anh-hai-v2.glb",
+        "model": "https://orrtnvht4or15ro0.public.blob.vercel-storage.com/characters/models/anhhai-v3.glb",
     },
     "be-roi": {
-        "model": "https://ly2wmvyx1bvvtt8w.public.blob.vercel-storage.com/characters/models/be-roi.glb",
+        "model": "https://orrtnvht4or15ro0.public.blob.vercel-storage.com/characters/models/be-roi.glb",
     },
     "chang-khen": {
-        "model": "https://ly2wmvyx1bvvtt8w.public.blob.vercel-storage.com/characters/models/chang-khen.glb",
-        "intro_video": "https://ly2wmvyx1bvvtt8w.public.blob.vercel-storage.com/characters/videos/chang-khen.mp4",
+        "model": "https://orrtnvht4or15ro0.public.blob.vercel-storage.com/characters/models/changkhenv2.glb",
+        "intro_video": "https://orrtnvht4or15ro0.public.blob.vercel-storage.com/characters/videos/changkhen_v2.mp4",
     },
     "co-cheo": {
-        "model": "https://ly2wmvyx1bvvtt8w.public.blob.vercel-storage.com/characters/models/co-cheo-v2.glb",
-        "intro_video": "https://ly2wmvyx1bvvtt8w.public.blob.vercel-storage.com/characters/videos/co-cheo.mp4",
+        "model": "https://orrtnvht4or15ro0.public.blob.vercel-storage.com/characters/models/cocheo-v4-s2.glb",
+        "intro_video": "https://orrtnvht4or15ro0.public.blob.vercel-storage.com/characters/videos/cocheo_cc3.mp4",
     },
     "nang-then": {
-        "model": "https://ly2wmvyx1bvvtt8w.public.blob.vercel-storage.com/characters/models/nang-then.glb",
-        "intro_video": "https://ly2wmvyx1bvvtt8w.public.blob.vercel-storage.com/characters/videos/nang-then-v2.mp4",
+        "model": "https://orrtnvht4or15ro0.public.blob.vercel-storage.com/characters/models/nang-then-v2.glb",
+        "intro_video": "https://orrtnvht4or15ro0.public.blob.vercel-storage.com/characters/videos/nangthen_V3.mp4",
     },
     "chu-xam": {
-        "model": "https://ly2wmvyx1bvvtt8w.public.blob.vercel-storage.com/characters/models/chu-xam-x2.glb",
+        "model": "https://orrtnvht4or15ro0.public.blob.vercel-storage.com/characters/models/chu-xam.glb",
     },
 }
 

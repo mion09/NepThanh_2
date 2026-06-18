@@ -11,6 +11,12 @@ from werkzeug.utils import secure_filename
 from modules.config import BASE_DIR, UPLOAD_DIR
 
 IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".webp", ".gif")
+BLOB_READ_WRITE_TOKEN_ENV_VARS = (
+    "NEP_THANH_2_BLOB_READ_WRITE_TOKEN",
+    "NEP_THANH_BLOB_READ_WRITE_TOKEN",
+    "BLOB_READ_WRITE_TOKEN",
+    "VERCEL_BLOB_READ_WRITE_TOKEN",
+)
 PRODUCT_COLOR_DETAILS = {
     "black": {"label": "Đen", "css": "#111111"},
     "white": {"label": "Trắng", "css": "#ffffff"},
@@ -165,11 +171,7 @@ def _save_upload(file_storage, subdir):
         return None
     unique = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(3)}_{filename}"
     if os.environ.get("VERCEL"):
-        if not os.environ.get("BLOB_READ_WRITE_TOKEN"):
-            raise RuntimeError("BLOB_READ_WRITE_TOKEN is required for uploads on Vercel.")
-        from vercel.blob import BlobClient
-
-        blob = BlobClient().put(
+        blob = _get_blob_client().put(
             f"{subdir}/{unique}",
             file_storage.read(),
             access="public",
@@ -182,6 +184,21 @@ def _save_upload(file_storage, subdir):
     file_storage.save(path)
     rel_path = os.path.relpath(path, os.path.join(BASE_DIR, "static"))
     return rel_path.replace("\\", "/")
+
+
+def _get_blob_read_write_token():
+    for env_name in BLOB_READ_WRITE_TOKEN_ENV_VARS:
+        token = (os.environ.get(env_name) or "").strip().strip('"').strip("'")
+        if token:
+            return token
+    env_names = ", ".join(BLOB_READ_WRITE_TOKEN_ENV_VARS)
+    raise RuntimeError(f"One of {env_names} is required for Vercel Blob uploads.")
+
+
+def _get_blob_client():
+    from vercel.blob import BlobClient
+
+    return BlobClient(token=_get_blob_read_write_token())
 
 
 def _hash_ip(ip_address):

@@ -45,6 +45,7 @@ from modules.qr_service import (
 from modules.utils import (
     _build_order_number,
     _generate_qr_png,
+    _get_blob_client,
     _is_allowed_image_filename,
     _normalize_static_path,
     _normalize_product_color,
@@ -139,10 +140,8 @@ def _delete_product_upload(image_url):
     if normalized and normalized.startswith(("http://", "https://")):
         if ".blob.vercel-storage.com/" not in normalized:
             return
-        from vercel.blob import BlobClient
-
         try:
-            BlobClient().delete(normalized)
+            _get_blob_client().delete(normalized)
         except Exception:
             LOGGER.exception("Failed to delete product image blob: %s", normalized)
         return

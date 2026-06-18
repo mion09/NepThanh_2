@@ -10,7 +10,7 @@ try:
 except ImportError:
     libsql = None
 
-from modules.config import DB_PATH, TURSO_AUTH_TOKEN, TURSO_DATABASE_URL, USE_TURSO
+from modules.config import BASE_DIR, DB_PATH, TURSO_AUTH_TOKEN, TURSO_DATABASE_URL, USE_TURSO
 
 
 if USE_TURSO and libsql is None:
@@ -33,7 +33,66 @@ _TURSO_SYNC_INTERVAL_SECONDS = max(
     int((os.environ.get("TURSO_SYNC_INTERVAL_SECONDS") or "15").strip() or "15"),
 )
 _LAST_TURSO_SYNC_AT = 0.0
-_SCHEMA_BOOTSTRAP_VERSION = "2026-05-31-product-image-colors"
+_SCHEMA_BOOTSTRAP_VERSION = "2026-06-18-static-shirt-color-images"
+
+STATIC_PRODUCT_IMAGES = (
+    {
+        "product_slug": "ao-co-cheo",
+        "url": "images/shirt/co_cheo.jpg",
+        "color": None,
+        "sort_order": 0,
+        "is_primary": 1,
+        "alt_text": "Co Cheo shirt",
+    },
+    {
+        "product_slug": "ao-anh-hai",
+        "url": "images/shirt/anh_hai_black.png",
+        "color": "black",
+        "sort_order": 10,
+        "is_primary": 0,
+        "alt_text": "Anh Hai black shirt",
+    },
+    {
+        "product_slug": "ao-chang-khen",
+        "url": "images/shirt/chang_khen_black.png",
+        "color": "black",
+        "sort_order": 10,
+        "is_primary": 0,
+        "alt_text": "Chang Khen black shirt",
+    },
+    {
+        "product_slug": "ao-chu-xam",
+        "url": "images/shirt/chu_xam_white.png",
+        "color": "white",
+        "sort_order": 10,
+        "is_primary": 0,
+        "alt_text": "Chu Xam white shirt",
+    },
+    {
+        "product_slug": "ao-co-cheo",
+        "url": "images/shirt/co_cheo_white.png",
+        "color": "white",
+        "sort_order": 10,
+        "is_primary": 0,
+        "alt_text": "Co Cheo white shirt",
+    },
+    {
+        "product_slug": "ao-nang-then",
+        "url": "images/shirt/hatthen_black.png",
+        "color": "black",
+        "sort_order": 10,
+        "is_primary": 0,
+        "alt_text": "Nang Then black shirt",
+    },
+    {
+        "product_slug": "ao-be-roi",
+        "url": "images/shirt/mua_roi_white.png",
+        "color": "white",
+        "sort_order": 10,
+        "is_primary": 0,
+        "alt_text": "Be Roi white shirt",
+    },
+)
 
 
 class ManagedConnection:
@@ -703,10 +762,52 @@ def init_db():
         "CREATE INDEX IF NOT EXISTS idx_product_images_color_order ON product_images(product_id, color, sort_order, id)"
     )
 
+    _ensure_static_product_images(conn)
     _set_setting(conn, "_schema_bootstrap_version", _SCHEMA_BOOTSTRAP_VERSION)
     _ensure_admin_user(conn)
     conn.commit()
     conn.close()
+
+
+def _ensure_static_product_images(conn):
+    for image in STATIC_PRODUCT_IMAGES:
+        absolute_path = os.path.join(BASE_DIR, "static", *image["url"].split("/"))
+        if not os.path.isfile(absolute_path):
+            continue
+        product = conn.execute(
+            "SELECT id FROM products WHERE slug = ?",
+            (image["product_slug"],),
+        ).fetchone()
+        if product is None:
+            continue
+        exists = conn.execute(
+            "SELECT id FROM product_images WHERE product_id = ? AND url = ?",
+            (product["id"], image["url"]),
+        ).fetchone()
+        if exists is not None:
+            continue
+        is_primary = image["is_primary"]
+        if is_primary:
+            current_primary = conn.execute(
+                "SELECT id FROM product_images WHERE product_id = ? AND is_primary = 1",
+                (product["id"],),
+            ).fetchone()
+            if current_primary is not None:
+                is_primary = 0
+        conn.execute(
+            """
+            INSERT INTO product_images (product_id, url, alt_text, sort_order, color, is_primary)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                product["id"],
+                image["url"],
+                image["alt_text"],
+                image["sort_order"],
+                image["color"],
+                is_primary,
+            ),
+        )
 
 
 def _ensure_admin_user(conn):

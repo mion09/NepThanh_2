@@ -1,6 +1,17 @@
 {
   "builds": [{ "src": "app.py", "use": "@vercel/python" }],
-  "routes": [{ "src": "/(.*)", "dest": "app.py" }],
+  "routes": [
+    { "src": "/static/(.*)", "dest": "/static/$1" },
+    { "src": "/favicon.ico", "dest": "/static/favicon.ico" },
+    { "src": "/robots.txt", "dest": "/static/robots.txt" },
+    { "src": "/api/(blog|demo|generate)(/.*)?", "status": 404 },
+    { "src": "/blog/[0-9]+", "status": 404 },
+    { "src": "/home", "status": 404 },
+    { "src": "/(wp-admin|wp-login|wordpress|wp-content|xmlrpc\\.php)(/.*)?", "status": 404 },
+    { "src": "/.*\\.php", "status": 404 },
+    { "src": "/\\.git(/.*)?", "status": 404 },
+    { "src": "/(.*)", "dest": "app.py" }
+  ],
   "headers": [
     {
       "source": "/static/(.*)\\.(jpg|jpeg|png|webp|gif|svg|ico|mp4|webm|glb|gltf)",

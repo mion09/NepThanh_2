@@ -219,9 +219,30 @@ def _generate_qr_png(data):
 
 
 def _safe_next_url(value):
-    if value and value.startswith("/"):
-        return value
-    return None
+    if not value:
+        return None
+    value = value.strip()
+    for _ in range(5):
+        decoded = urllib.parse.unquote(value)
+        if decoded == value:
+            break
+        value = decoded
+    parsed = urllib.parse.urlparse(value)
+    if parsed.scheme or parsed.netloc or not value.startswith("/") or value.startswith("//"):
+        return None
+    blocked = {
+        "/login",
+        "/signup",
+        "/logout",
+        "/auth/google",
+        "/auth/google/callback",
+    }
+    path = parsed.path or "/"
+    if path in blocked or path.startswith("/auth/"):
+        return None
+    if parsed.query:
+        return f"{path}?{parsed.query}"
+    return path
 
 
 def _safe_background_url(candidate):

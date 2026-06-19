@@ -812,6 +812,7 @@ def register_public_routes(app):
         error = request.args.get("error")
         signup_email = ""
         next_url = _safe_next_url(request.args.get("next") or request.form.get("next"))
+        auth_next_url = next_url or url_for("home")
         background_url = _safe_background_url(next_url)
         if not background_url:
             background_url = _background_from_referrer(request.referrer, request.host)
@@ -848,7 +849,7 @@ def register_public_routes(app):
             description="Tạo tài khoản để theo dõi sản phẩm mới và lưu thông tin mua hàng.",
             error=error,
             google_enabled=_google_enabled(),
-            next_url=next_url,
+            next_url=auth_next_url,
             signup_email=signup_email,
             background_url=background_url,
         )
@@ -859,6 +860,7 @@ def register_public_routes(app):
             return redirect(url_for("home"))
         error = request.args.get("error")
         next_url = _safe_next_url(request.args.get("next") or request.form.get("next"))
+        auth_next_url = next_url or url_for("home")
         background_url = _safe_background_url(next_url)
         if not background_url:
             background_url = _background_from_referrer(request.referrer, request.host)
@@ -891,7 +893,7 @@ def register_public_routes(app):
             description="Đăng nhập để theo dõi sản phẩm mới và ưu đãi.",
             error=error,
             google_enabled=_google_enabled(),
-            next_url=next_url,
+            next_url=auth_next_url,
             background_url=background_url,
         )
 

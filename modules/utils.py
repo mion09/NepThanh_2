@@ -121,6 +121,11 @@ def _normalize_product_color(value):
         "vang": "yellow",
         "hong": "pink",
         "xam": "gray",
+        "be": "beige",
+        "mau-be": "beige",
+        "beige": "beige",
+        "cream": "beige",
+        "kem": "beige",
     }
     return aliases.get(key, key)
 

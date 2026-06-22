@@ -319,6 +319,13 @@ def _map_product(row, image_url, promotions=None):
     regular_price = row["base_price"] or 0
     promotion = best_promotion_for_price(regular_price, promotions or [])
     sale_price = apply_promotion_to_price(regular_price, promotion)
+    status = row["status"] or "active"
+    status_labels = {
+        "active": "Đang bán",
+        "coming_soon": "Coming soon",
+        "hidden": "Ẩn",
+        "archived": "Lưu trữ",
+    }
     product = {
         "id": row["id"],
         "slug": row["slug"],
@@ -333,7 +340,10 @@ def _map_product(row, image_url, promotions=None):
         "image": image,
         "short_description": row["description"] or "",
         "long_description": row["long_description"] if "long_description" in row.keys() else "",
-        "status": row["status"],
+        "status": status,
+        "status_label": status_labels.get(status, status),
+        "is_purchasable": status == "active",
+        "is_coming_soon": status == "coming_soon",
         "is_featured": row["is_featured"] if "is_featured" in row.keys() else 0,
         "collection": row["collection"] if "collection" in row.keys() else None,
     }
@@ -383,8 +393,14 @@ def load_products():
             SELECT p.*, c.slug AS character_slug
             FROM products p
             LEFT JOIN characters c ON c.id = p.character_id
-            WHERE p.status = 'active'
-            ORDER BY p.id
+            WHERE p.status IN ('active', 'coming_soon')
+            ORDER BY
+                CASE p.status
+                    WHEN 'active' THEN 0
+                    WHEN 'coming_soon' THEN 1
+                    ELSE 2
+                END,
+                p.id
             """
         ).fetchall()
         image_rows = conn.execute(

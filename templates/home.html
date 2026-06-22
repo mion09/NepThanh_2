@@ -42,9 +42,17 @@
         <article class="card product-card">
             <img src="{{ url_for('static', filename=product.image) }}" alt="{{ product.name }}" loading="lazy"
                 decoding="async" />
+            {% if product.is_coming_soon %}
+            <span class="product-status-badge product-status-badge-soon">{{ product.status_label }}</span>
+            {% endif %}
             <h3>{{ product.name }}</h3>
+            {% if product.is_coming_soon %}
+            <p class="price price-muted">Sắp ra mắt</p>
+            <a href="{{ url_for('product_detail', slug=product.slug) }}" class="btn-secondary btn-secondary-muted">Xem thông tin</a>
+            {% else %}
             <p class="price">{{ "{:,}".format(product.price) }} ₫</p>
             <a href="{{ url_for('product_detail', slug=product.slug) }}" class="btn-secondary">Xem chi tiết</a>
+            {% endif %}
         </article>
         {% endfor %}
     </div>

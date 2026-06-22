@@ -631,6 +631,13 @@ main>.container {
     box-shadow: 0 4px 12px rgba(178, 34, 34, 0.3);
 }
 
+.btn-secondary-muted,
+.btn-secondary-muted:hover {
+    background: #5b5b5b;
+    color: var(--vn-white);
+    box-shadow: none;
+}
+
 .btn-secondary[disabled] {
     opacity: 0.5;
     cursor: not-allowed;
@@ -800,6 +807,10 @@ main>.container {
     justify-content: center;
 }
 
+.featured-products .grid {
+    grid-template-columns: repeat(3, minmax(min(260px, 100%), 320px));
+}
+
 /* ============================================================
    GRID & CARDS
    ============================================================ */
@@ -869,6 +880,38 @@ main>.container {
     font-weight: 700;
     color: var(--vn-red);
     font-size: 1rem;
+}
+
+.price.price-muted {
+    color: #6b5c5c;
+}
+
+.product-status-badge {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    min-height: 28px;
+    margin: 0 1rem 0.35rem;
+    padding: 0.3rem 0.8rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    box-shadow: 0 6px 18px rgba(178, 34, 34, 0.18);
+}
+
+.product-status-badge-soon {
+    background: var(--vn-red);
+    color: var(--vn-white);
+}
+
+.card > .product-status-badge {
+    margin-top: 0.85rem;
+}
+
+.shop-card-body .product-status-badge {
+    margin: 0 0 0.65rem;
 }
 
 .card .link,
@@ -4366,6 +4409,12 @@ main.character-main>.container {
 
 .btn-add-cart:hover {
     background: var(--vn-red-dark);
+    color: var(--vn-white);
+}
+
+.btn-add-cart-muted,
+.btn-add-cart-muted:hover {
+    background: #5b5b5b;
     color: var(--vn-white);
 }
 

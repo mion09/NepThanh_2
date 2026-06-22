@@ -11,6 +11,7 @@
             <select name="status">
                 <option value="" {% if not status_filter %}selected{% endif %}>Tất cả</option>
                 <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Đang bán</option>
+                <option value="coming_soon" {% if status_filter == 'coming_soon' %}selected{% endif %}>Coming soon</option>
                 <option value="hidden" {% if status_filter == 'hidden' %}selected{% endif %}>Ẩn</option>
                 <option value="archived" {% if status_filter == 'archived' %}selected{% endif %}>Lưu trữ</option>
             </select>

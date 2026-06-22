@@ -63,6 +63,9 @@
             {% if product.has_promotion and product.promotion_name %}
             <small class="sale-label">{{ product.promotion_name }}</small>
             {% endif %}
+            {% if product.is_coming_soon %}
+            <small class="product-detail-status product-detail-status-soon">{{ product.status_label }}</small>
+            {% endif %}
         </div>
 
         <hr class="product-divider" />
@@ -72,6 +75,12 @@
             <p class="product-section-text">{{ product.short_description }}</p>
         </div>
 
+        {% if product.is_coming_soon %}
+        <div class="product-coming-soon-panel">
+            <strong>Sắp ra mắt</strong>
+            <p>Sản phẩm đang trong giai đoạn giới thiệu. Bạn có thể xem thông tin trước, tính năng mua và thêm vào giỏ hàng sẽ mở khi sản phẩm chính thức ra mắt.</p>
+        </div>
+        {% else %}
         <form method="post" action="{{ url_for('cart_add') }}" class="product-add-form">
             <input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}" />
             <input type="hidden" name="selected_color" id="selected_color"
@@ -97,7 +106,7 @@
                 <div class="pd-select-wrapper">
                     <select name="variant_id" id="variant_id" class="pd-select" required>
                         {% for variant in variants %}
-                        <option value="{{ variant.id }}" data-color="{{ (variant.color or '')|lower }}"
+                        <option value="{{ variant.id }}" data-color="{{ variant_color_keys.get(variant.id, (variant.color or '')|lower) }}"
                             data-base-disabled="{% if variant.stock_qty <=0 %}true{% else %}false{% endif %}" {% if
                             variant.stock_qty <=0 %}disabled{% endif %}>
                             {{ variant.size }} - {% if variant.stock_qty > 0 %}Còn {{ variant.stock_qty }} sản phẩm{%
@@ -134,6 +143,7 @@
             <p class="pd-stock-empty">Sản phẩm hiện chưa có biến thể để đặt hàng.</p>
             {% endif %}
         </form>
+        {% endif %}
 
         <div class="pd-character-card">
             <div class="pd-character-avatar">
@@ -410,6 +420,47 @@
         color: #e31837;
         /* Strong red like the image */
         margin-bottom: 20px;
+    }
+
+    .product-detail-status {
+        display: inline-flex;
+        align-items: center;
+        margin-left: 10px;
+        padding: 5px 10px;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        vertical-align: middle;
+    }
+
+    .product-detail-status-soon {
+        background: #2b1f1f;
+        color: #d4a843;
+    }
+
+    .product-coming-soon-panel {
+        border: 1px solid #e8d9ba;
+        border-left: 4px solid #d4a843;
+        border-radius: 10px;
+        background: #fff8f0;
+        padding: 18px 20px;
+        margin: 8px 0 30px;
+        color: #2b1f1f;
+    }
+
+    .product-coming-soon-panel strong {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 1.05rem;
+        color: #8b0000;
+    }
+
+    .product-coming-soon-panel p {
+        margin: 0;
+        color: #6b5c5c;
+        line-height: 1.6;
     }
 
     .product-divider {
@@ -707,9 +758,23 @@
         if (colorInput && colorButtons.length) {
             const normalizeColor = (value) => {
                 const raw = (value || '').trim().toLowerCase();
-                if (raw === 'đen' || raw === 'den' || raw === 'black') return 'black';
-                if (raw === 'trắng' || raw === 'trang' || raw === 'white') return 'white';
-                return raw;
+                const key = raw.normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .replace(/đ/g, 'd')
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/^-+|-+$/g, '');
+                const aliases = {
+                    den: 'black',
+                    black: 'black',
+                    trang: 'white',
+                    white: 'white',
+                    be: 'beige',
+                    'mau-be': 'beige',
+                    beige: 'beige',
+                    cream: 'beige',
+                    kem: 'beige',
+                };
+                return aliases[key] || key;
             };
 
             const syncProductImage = (selectedColor) => {

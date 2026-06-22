@@ -33,16 +33,16 @@ _TURSO_SYNC_INTERVAL_SECONDS = max(
     int((os.environ.get("TURSO_SYNC_INTERVAL_SECONDS") or "15").strip() or "15"),
 )
 _LAST_TURSO_SYNC_AT = 0.0
-_SCHEMA_BOOTSTRAP_VERSION = "2026-06-18-static-shirt-color-images"
+_SCHEMA_BOOTSTRAP_VERSION = "2026-06-22-beige-shirt-color-images"
 
 STATIC_PRODUCT_IMAGES = (
     {
         "product_slug": "ao-co-cheo",
-        "url": "images/shirt/co_cheo.jpg",
-        "color": None,
+        "url": "images/shirt/co_cheo_black.jpg",
+        "color": "black",
         "sort_order": 0,
         "is_primary": 1,
-        "alt_text": "Co Cheo shirt",
+        "alt_text": "Co Cheo black shirt",
     },
     {
         "product_slug": "ao-anh-hai",
@@ -54,11 +54,27 @@ STATIC_PRODUCT_IMAGES = (
     },
     {
         "product_slug": "ao-chang-khen",
-        "url": "images/shirt/chang_khen_black.png",
+        "url": "images/shirt/chang_khen_black.jpg",
         "color": "black",
-        "sort_order": 10,
-        "is_primary": 0,
+        "sort_order": 0,
+        "is_primary": 1,
         "alt_text": "Chang Khen black shirt",
+    },
+    {
+        "product_slug": "ao-chang-khen",
+        "url": "images/shirt/chang_khen_white.jpg",
+        "color": "white",
+        "sort_order": 20,
+        "is_primary": 0,
+        "alt_text": "Chang Khen white shirt",
+    },
+    {
+        "product_slug": "ao-chang-khen",
+        "url": "images/shirt/chang_khen_be.jpg",
+        "color": "beige",
+        "sort_order": 30,
+        "is_primary": 0,
+        "alt_text": "Chang Khen beige shirt",
     },
     {
         "product_slug": "ao-chu-xam",
@@ -70,19 +86,43 @@ STATIC_PRODUCT_IMAGES = (
     },
     {
         "product_slug": "ao-co-cheo",
-        "url": "images/shirt/co_cheo_white.png",
+        "url": "images/shirt/co_cheo_white.jpg",
         "color": "white",
-        "sort_order": 10,
+        "sort_order": 20,
         "is_primary": 0,
         "alt_text": "Co Cheo white shirt",
     },
     {
-        "product_slug": "ao-nang-then",
-        "url": "images/shirt/hatthen_black.png",
-        "color": "black",
-        "sort_order": 10,
+        "product_slug": "ao-co-cheo",
+        "url": "images/shirt/co_cheo_be.png",
+        "color": "beige",
+        "sort_order": 30,
         "is_primary": 0,
+        "alt_text": "Co Cheo beige shirt",
+    },
+    {
+        "product_slug": "ao-nang-then",
+        "url": "images/shirt/nang_then_black.jpg",
+        "color": "black",
+        "sort_order": 0,
+        "is_primary": 1,
         "alt_text": "Nang Then black shirt",
+    },
+    {
+        "product_slug": "ao-nang-then",
+        "url": "images/shirt/nang_then_white.jpg",
+        "color": "white",
+        "sort_order": 20,
+        "is_primary": 0,
+        "alt_text": "Nang Then white shirt",
+    },
+    {
+        "product_slug": "ao-nang-then",
+        "url": "images/shirt/nang_then_be.jpg",
+        "color": "beige",
+        "sort_order": 30,
+        "is_primary": 0,
+        "alt_text": "Nang Then beige shirt",
     },
     {
         "product_slug": "ao-be-roi",
@@ -769,6 +809,76 @@ def init_db():
     conn.close()
 
 
+def _static_product_image_file_exists(url):
+    if not url or "://" in url:
+        return True
+    clean_url = url.strip().replace("\\", "/")
+    if clean_url.startswith("/static/"):
+        clean_url = clean_url[len("/static/"):]
+    elif clean_url.startswith("static/"):
+        clean_url = clean_url[len("static/"):]
+    return os.path.isfile(os.path.join(BASE_DIR, "static", *clean_url.lstrip("/").split("/")))
+
+
+def _missing_static_product_image(row):
+    return row is not None and not _static_product_image_file_exists(row["url"])
+
+
+def _find_stale_product_image(conn, product_id, color, prefer_primary=False):
+    rows = conn.execute(
+        """
+        SELECT id, url, is_primary
+        FROM product_images
+        WHERE product_id = ?
+          AND COALESCE(color, '') = COALESCE(?, '')
+        ORDER BY is_primary DESC, sort_order, id
+        """,
+        (product_id, color),
+    ).fetchall()
+    for row in rows:
+        if _missing_static_product_image(row):
+            return row
+    if not prefer_primary:
+        return None
+    primary = conn.execute(
+        """
+        SELECT id, url, is_primary
+        FROM product_images
+        WHERE product_id = ? AND is_primary = 1
+        ORDER BY sort_order, id
+        LIMIT 1
+        """,
+        (product_id,),
+    ).fetchone()
+    if _missing_static_product_image(primary):
+        return primary
+    return None
+
+
+def _should_make_static_image_primary(conn, product_id, image):
+    if not image["is_primary"]:
+        return False
+    current_primary = conn.execute(
+        """
+        SELECT id, url, is_primary
+        FROM product_images
+        WHERE product_id = ? AND is_primary = 1
+        ORDER BY sort_order, id
+        LIMIT 1
+        """,
+        (product_id,),
+    ).fetchone()
+    return current_primary is None or _missing_static_product_image(current_primary)
+
+
+def _set_static_product_image_primary(conn, product_id, image_id):
+    conn.execute("UPDATE product_images SET is_primary = 0 WHERE product_id = ?", (product_id,))
+    conn.execute(
+        "UPDATE product_images SET is_primary = 1 WHERE id = ? AND product_id = ?",
+        (image_id, product_id),
+    )
+
+
 def _ensure_static_product_images(conn):
     for image in STATIC_PRODUCT_IMAGES:
         absolute_path = os.path.join(BASE_DIR, "static", *image["url"].split("/"))
@@ -784,16 +894,36 @@ def _ensure_static_product_images(conn):
             "SELECT id FROM product_images WHERE product_id = ? AND url = ?",
             (product["id"], image["url"]),
         ).fetchone()
+        should_be_primary = _should_make_static_image_primary(conn, product["id"], image)
         if exists is not None:
+            if should_be_primary:
+                _set_static_product_image_primary(conn, product["id"], exists["id"])
             continue
-        is_primary = image["is_primary"]
-        if is_primary:
-            current_primary = conn.execute(
-                "SELECT id FROM product_images WHERE product_id = ? AND is_primary = 1",
-                (product["id"],),
-            ).fetchone()
-            if current_primary is not None:
-                is_primary = 0
+        stale_image = _find_stale_product_image(
+            conn,
+            product["id"],
+            image["color"],
+            prefer_primary=bool(image["is_primary"]),
+        )
+        if stale_image is not None:
+            conn.execute(
+                """
+                UPDATE product_images
+                SET url = ?, alt_text = ?, sort_order = ?, color = ?
+                WHERE id = ?
+                """,
+                (
+                    image["url"],
+                    image["alt_text"],
+                    image["sort_order"],
+                    image["color"],
+                    stale_image["id"],
+                ),
+            )
+            if should_be_primary or stale_image["is_primary"]:
+                _set_static_product_image_primary(conn, product["id"], stale_image["id"])
+            continue
+        is_primary = 1 if should_be_primary else 0
         conn.execute(
             """
             INSERT INTO product_images (product_id, url, alt_text, sort_order, color, is_primary)

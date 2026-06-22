@@ -82,9 +82,21 @@ def register_public_routes(app):
     def home():
         products = load_products()
         characters = load_characters()
-        featured_products = [product for product in products if product.get("is_featured")]
-        if not featured_products:
-            featured_products = products[:4]
+        featured_product_slugs = ("ao-chang-khen", "ao-nang-then", "ao-co-cheo")
+        featured_products = [
+            product
+            for slug in featured_product_slugs
+            for product in products
+            if product.get("slug") == slug
+        ]
+        if len(featured_products) < len(featured_product_slugs):
+            existing_ids = {product.get("id") for product in featured_products}
+            featured_products.extend(
+                product
+                for product in products
+                if product.get("is_featured") and product.get("id") not in existing_ids
+            )
+            featured_products = featured_products[: len(featured_product_slugs)]
         featured_character_slugs = ("chang-khen", "nang-then", "co-cheo")
         featured_characters = [
             character
@@ -198,8 +210,10 @@ def register_public_routes(app):
         ).fetchall()
         variant_colors = []
         seen_colors = set()
+        variant_color_keys = {}
         for variant in variants:
             color = _normalize_product_color(variant["color"])
+            variant_color_keys[variant["id"]] = color
             if color and color not in seen_colors:
                 variant_colors.append(_product_color_details(variant["color"]))
                 seen_colors.add(color)
@@ -234,6 +248,7 @@ def register_public_routes(app):
             product=product,
             character=character,
             variants=variants,
+            variant_color_keys=variant_color_keys,
             variant_colors=variant_colors,
             product_images=product_images,
             qr_batch_ready=qr_batch_ready,

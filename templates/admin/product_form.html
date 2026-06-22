@@ -27,6 +27,7 @@
             <label>Trạng thái</label>
             <select name="status">
                 <option value="active" {% if not product or product.status == 'active' %}selected{% endif %}>Đang bán</option>
+                <option value="coming_soon" {% if product and product.status == 'coming_soon' %}selected{% endif %}>Coming soon</option>
                 <option value="hidden" {% if product and product.status == 'hidden' %}selected{% endif %}>Ẩn</option>
                 <option value="archived" {% if product and product.status == 'archived' %}selected{% endif %}>Lưu trữ</option>
             </select>
@@ -95,7 +96,7 @@
             </div>
             <div class="form-group">
                 <label>Màu</label>
-                <input name="color" />
+                <input name="color" placeholder="black, white hoặc be" />
             </div>
             <div class="form-group">
                 <label>SKU</label>
@@ -139,7 +140,7 @@
                         <td><input name="sku" value="{{ variant.sku }}" /></td>
                         <td>
                             <input name="size" value="{{ variant.size }}" style="width: 80px;" />
-                            <input name="color" value="{{ variant.color }}" style="width: 90px;" />
+                            <input name="color" value="{{ variant.color }}" placeholder="be" style="width: 90px;" />
                         </td>
                         <td><input type="number" name="price" value="{{ variant.price or '' }}" /></td>
                         <td><input type="number" name="stock_qty" value="{{ variant.stock_qty }}" /></td>
@@ -173,7 +174,7 @@
             </div>
             <div class="form-group">
                 <label>Màu áo</label>
-                <input name="color" placeholder="white hoặc Trắng" />
+                <input name="color" placeholder="white, black hoặc be" />
             </div>
             <div class="form-group">
                 <label>Alt text</label>

@@ -55,6 +55,12 @@ from modules.utils import (
 )
 
 LOGGER = logging.getLogger(__name__)
+PRODUCT_STATUSES = {"active", "coming_soon", "hidden", "archived"}
+
+
+def _normalize_product_status(value):
+    status = (value or "active").strip()
+    return status if status in PRODUCT_STATUSES else "active"
 
 
 def _log_action(admin_id, action, entity_type=None, entity_id=None, details=None):
@@ -333,7 +339,7 @@ def register_admin_routes(app):
             seo_description = request.form.get("seo_description", "").strip()
             base_price = _parse_int(request.form.get("base_price"), 0)
             character_id = _parse_int(request.form.get("character_id"))
-            status = request.form.get("status", "active")
+            status = _normalize_product_status(request.form.get("status", "active"))
             is_featured = 1 if request.form.get("is_featured") else 0
             collection = request.form.get("collection", "").strip() or None
             category_ids = [cid for cid in (_parse_int(cid) for cid in request.form.getlist("category_ids")) if cid]
@@ -411,7 +417,7 @@ def register_admin_routes(app):
             seo_description = request.form.get("seo_description", "").strip()
             base_price = _parse_int(request.form.get("base_price"), 0)
             character_id = _parse_int(request.form.get("character_id"))
-            status = request.form.get("status", "active")
+            status = _normalize_product_status(request.form.get("status", "active"))
             is_featured = 1 if request.form.get("is_featured") else 0
             collection = request.form.get("collection", "").strip() or None
             category_ids = [cid for cid in (_parse_int(cid) for cid in request.form.getlist("category_ids")) if cid]
@@ -498,7 +504,7 @@ def register_admin_routes(app):
             conn.close()
             abort(404)
         size = request.form.get("size", "").strip() or "Free"
-        color = request.form.get("color", "").strip() or "black"
+        color = _normalize_product_color(request.form.get("color", "")) or "black"
         sku = request.form.get("sku", "").strip() or f"{product['slug']}-{size}-{color}".upper()
         price = request.form.get("price")
         stock_qty = _parse_int(request.form.get("stock_qty"), 0)
@@ -548,7 +554,7 @@ def register_admin_routes(app):
             conn.close()
             abort(404)
         size = request.form.get("size", "").strip() or "Free"
-        color = request.form.get("color", "").strip() or "black"
+        color = _normalize_product_color(request.form.get("color", "")) or "black"
         sku = request.form.get("sku", "").strip() or variant["sku"]
         price = request.form.get("price")
         stock_qty = _parse_int(request.form.get("stock_qty"), 0)

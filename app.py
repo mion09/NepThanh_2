@@ -2,6 +2,7 @@
 Flask application for the Nếp Thanh – Dòng chảy thanh âm Việt project.
 """
 
+import os
 from datetime import datetime
 
 from flask import Flask, render_template, request, url_for
@@ -39,6 +40,7 @@ def inject_globals():
         "current_user": current_user,
         "is_admin": _is_admin_user(current_user),
         "google_enabled": _google_enabled(),
+        "google_analytics_id": os.environ.get("GOOGLE_ANALYTICS_ID", "G-H3C8YJ190C").strip(),
         "cart_count": get_cart_item_count(current_user),
     }
 

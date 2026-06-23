@@ -6,7 +6,7 @@ TURSO_AUTH_TOKEN = (os.environ.get("TURSO_AUTH_TOKEN") or "").strip() or None
 USE_TURSO = bool(TURSO_DATABASE_URL and TURSO_AUTH_TOKEN)
 
 if os.environ.get("VERCEL"):
-    DB_PATH = "/tmp/nepthanh.db"
+    DB_PATH = "/tmp/nepthanh-turso.db" if USE_TURSO else "/tmp/nepthanh.db"
     UPLOAD_DIR = "/tmp/uploads"
 else:
     DB_PATH = os.path.join(BASE_DIR, "data", "nepthanh.db")

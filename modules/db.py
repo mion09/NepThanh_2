@@ -237,17 +237,41 @@ def _normalize_row(row, description):
 
 def _get_db():
     if USE_TURSO:
-        conn = libsql.connect(
-            DB_PATH,
-            sync_url=TURSO_DATABASE_URL,
-            auth_token=TURSO_AUTH_TOKEN,
-        )
+        conn = _connect_turso()
         _maybe_sync_turso(conn)
     else:
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return ManagedConnection(conn, sync_enabled=USE_TURSO)
+
+
+def _connect_turso():
+    try:
+        return libsql.connect(
+            DB_PATH,
+            sync_url=TURSO_DATABASE_URL,
+            auth_token=TURSO_AUTH_TOKEN,
+        )
+    except ValueError as exc:
+        if "invalid local state" not in str(exc).lower():
+            raise
+        _remove_turso_replica_files(DB_PATH)
+        return libsql.connect(
+            DB_PATH,
+            sync_url=TURSO_DATABASE_URL,
+            auth_token=TURSO_AUTH_TOKEN,
+        )
+
+
+def _remove_turso_replica_files(path):
+    for suffix in ("", "-shm", "-wal", "-info"):
+        candidate = f"{path}{suffix}"
+        try:
+            if os.path.exists(candidate):
+                os.remove(candidate)
+        except OSError:
+            pass
 
 
 def _maybe_sync_turso(conn, force=False):

@@ -5,6 +5,7 @@
     <h1>Thanh toán</h1>
     <div class="checkout-layout">
         <form method="post" class="checkout-form" id="checkout_form">
+            <input type="hidden" name="checkout_submission_key" value="{{ checkout_submission_key }}" />
             <div class="checkout-block">
                 <h2>Thông tin nhận hàng</h2>
                 {% if current_user and addresses %}
@@ -151,7 +152,7 @@
                 <p><span>Vận chuyển</span><strong id="checkout_shipping_fee">{{ "{:,}".format(initial_shipping_fee) }}&nbsp;₫</strong></p>
                 <p class="total"><span>Tổng</span><strong id="checkout_total">{{ "{:,}".format(initial_total) }}&nbsp;₫</strong></p>
             </div>
-            <button type="submit" form="checkout_form" class="btn-secondary btn-block">Đặt hàng</button>
+            <button type="submit" form="checkout_form" class="btn-secondary btn-block" id="checkout_submit_btn">Đặt hàng</button>
             <a href="{{ url_for('cart_view') }}" class="btn-outline">Quay lại giỏ hàng</a>
         </aside>
     </div>
@@ -186,6 +187,8 @@
     var rateList = document.getElementById("shipping_rate_list");
     var shippingFeeEl = document.getElementById("checkout_shipping_fee");
     var totalEl = document.getElementById("checkout_total");
+    var checkoutForm = document.getElementById("checkout_form");
+    var checkoutSubmitBtn = document.getElementById("checkout_submit_btn");
     var subtotal = {{ cart.subtotal|int }};
     var discount = {{ cart.discount_amount|int }};
 
@@ -402,6 +405,18 @@
         if (event.target && event.target.name === "shipping_method") updateTotals();
         if (event.target && event.target.name === "payment_method") refreshQuotes();
     });
+    if (checkoutForm && checkoutSubmitBtn) {
+        checkoutForm.addEventListener("submit", function (event) {
+            if (checkoutForm.dataset.submitting === "1") {
+                event.preventDefault();
+                return;
+            }
+            checkoutForm.dataset.submitting = "1";
+            checkoutSubmitBtn.disabled = true;
+            checkoutSubmitBtn.textContent = "Đang đặt hàng...";
+            checkoutSubmitBtn.setAttribute("aria-busy", "true");
+        });
+    }
     loadProvinces();
     updateTotals();
 })();

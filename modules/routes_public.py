@@ -387,6 +387,9 @@ def register_public_routes(app):
         if not cart["items"]:
             flash("Giỏ hàng trống, vui lòng thêm sản phẩm trước khi thanh toán.", "error")
             return redirect(url_for("cart_view"))
+        if not session.get("checkout_submission_key"):
+            session["checkout_submission_key"] = secrets.token_urlsafe(24)
+        checkout_submission_key = session["checkout_submission_key"]
 
         profile = get_checkout_prefill(user)
         addresses = list_user_addresses(user["id"]) if user else []
@@ -419,6 +422,7 @@ def register_public_routes(app):
                 vnpay_return_url=url_for("vnpay_return", _external=True),
             )
             if result["ok"]:
+                session.pop("checkout_submission_key", None)
                 if result["payment_method"] == "vnpay" and result.get("payment_url"):
                     return redirect(result["payment_url"])
                 return redirect(url_for("checkout_success", order_number=result["order_number"]))
@@ -456,6 +460,7 @@ def register_public_routes(app):
             profile=profile,
             addresses=addresses,
             bank_transfer_enabled=bank_transfer_enabled(),
+            checkout_submission_key=checkout_submission_key,
         )
 
     @app.route("/shipping/quotes", methods=["POST"])

@@ -1,4 +1,5 @@
 import json
+import hashlib
 import threading
 from datetime import datetime
 
@@ -9,7 +10,7 @@ from modules.bank_transfer import (
 )
 from modules.cart import clear_cart, get_cart_snapshot
 from modules.customer_account import ensure_account_tables, get_address_by_id, get_default_address
-from modules.db import _get_db
+from modules.db import INTEGRITY_ERRORS, _get_db
 from modules.notifications import (
     send_new_order_alert_to_owner,
     send_order_confirmation_email,
@@ -61,7 +62,26 @@ def ensure_checkout_tables():
         """
     )
     conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS checkout_submissions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            submission_key TEXT NOT NULL UNIQUE,
+            user_id INTEGER,
+            cart_fingerprint TEXT,
+            status TEXT NOT NULL DEFAULT 'processing',
+            order_id INTEGER,
+            error_message TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE SET NULL
+        )
+        """
+    )
+    conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_payment_transactions_order_id ON payment_transactions(order_id)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_checkout_submissions_order_id ON checkout_submissions(order_id)"
     )
     conn.commit()
     conn.close()
@@ -141,6 +161,120 @@ def _address_or_form_value(address, key, form_data):
     return value
 
 
+def _cart_fingerprint(cart):
+    payload = {
+        "items": [
+            {
+                "variant_id": item.get("variant_id"),
+                "qty": item.get("qty"),
+                "unit_price": item.get("unit_price"),
+                "line_total": item.get("line_total"),
+            }
+            for item in cart.get("items", [])
+        ],
+        "subtotal": cart.get("subtotal"),
+        "discount_amount": cart.get("discount_amount"),
+        "coupon_code": cart.get("coupon_code"),
+    }
+    raw = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def _existing_order_result(conn, order_id, payment_method):
+    if not order_id:
+        return None
+    order_row = conn.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
+    if order_row is None:
+        return None
+    item_rows = conn.execute(
+        "SELECT * FROM order_items WHERE order_id = ? ORDER BY id",
+        (order_id,),
+    ).fetchall()
+    return {
+        "ok": True,
+        "order_id": order_row["id"],
+        "order_number": order_row["order_number"],
+        "total": order_row["total"],
+        "payment_method": payment_method,
+        "payment_url": None,
+        "order": _row_to_dict(order_row),
+        "items": [_row_to_dict(row) for row in item_rows],
+        "duplicate": True,
+    }
+
+
+def _claim_checkout_submission(conn, submission_key, user_id, cart, payment_method):
+    submission_key = (submission_key or "").strip()
+    if not submission_key:
+        return None
+    now = datetime.utcnow().isoformat()
+    fingerprint = _cart_fingerprint(cart)
+    try:
+        conn.execute(
+            """
+            INSERT INTO checkout_submissions (
+                submission_key, user_id, cart_fingerprint, status, created_at, updated_at
+            )
+            VALUES (?, ?, ?, 'processing', ?, ?)
+            """,
+            (submission_key, user_id, fingerprint, now, now),
+        )
+        return None
+    except INTEGRITY_ERRORS:
+        row = conn.execute(
+            """
+            SELECT order_id, status
+            FROM checkout_submissions
+            WHERE submission_key = ?
+            """,
+            (submission_key,),
+        ).fetchone()
+        existing_result = _existing_order_result(
+            conn,
+            row["order_id"] if row else None,
+            payment_method,
+        )
+        if existing_result:
+            return existing_result
+        return {
+            "ok": False,
+            "error": "Đơn hàng đang được xử lý. Vui lòng không bấm đặt hàng nhiều lần.",
+        }
+
+
+def _complete_checkout_submission(conn, submission_key, order_id, now):
+    submission_key = (submission_key or "").strip()
+    if not submission_key:
+        return
+    conn.execute(
+        """
+        UPDATE checkout_submissions
+        SET status = 'completed', order_id = ?, error_message = NULL, updated_at = ?
+        WHERE submission_key = ?
+        """,
+        (order_id, now, submission_key),
+    )
+
+
+def _mark_checkout_submission_failed(submission_key, error_message):
+    submission_key = (submission_key or "").strip()
+    if not submission_key:
+        return
+    conn = _get_db()
+    try:
+        conn.execute(
+            """
+            UPDATE checkout_submissions
+            SET status = 'failed', error_message = ?, updated_at = ?
+            WHERE submission_key = ? AND status = 'processing'
+            """,
+            (str(error_message)[:500], datetime.utcnow().isoformat(), submission_key),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def _create_order_from_cart_snapshot(
     user,
     cart,
@@ -148,6 +282,7 @@ def _create_order_from_cart_snapshot(
     remote_addr="",
     vnpay_return_url=None,
     clear_cart_after=False,
+    submission_key=None,
 ):
     ensure_checkout_tables()
     user_id = user["id"] if user else None
@@ -201,6 +336,16 @@ def _create_order_from_cart_snapshot(
                     "ok": False,
                     "error": f"Size {variant['size']} của {item['product_name']} chỉ còn {stock_qty}.",
                 }
+
+        duplicate_result = _claim_checkout_submission(
+            conn,
+            submission_key,
+            user_id,
+            cart,
+            payment_method,
+        )
+        if duplicate_result:
+            return duplicate_result
 
         order_number = _build_order_number()
         now = datetime.utcnow().isoformat()
@@ -355,14 +500,25 @@ def _create_order_from_cart_snapshot(
                 (order_id, now),
             )
 
+        _complete_checkout_submission(conn, submission_key, order_id, now)
         conn.commit()
         order_row = conn.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
         item_rows = conn.execute(
             "SELECT * FROM order_items WHERE order_id = ? ORDER BY id",
             (order_id,),
         ).fetchall()
+    except Exception as exc:
+        try:
+            conn.rollback()
+        finally:
+            conn.close()
+        _mark_checkout_submission_failed(submission_key, exc)
+        raise
     finally:
-        conn.close()
+        try:
+            conn.close()
+        except Exception:
+            pass
 
     if clear_cart_after:
         clear_cart(user)
@@ -415,6 +571,7 @@ def place_order_from_cart(user, form_data, remote_addr, vnpay_return_url):
     notes = (form_data.get("notes") or "").strip()
     payment_method = (form_data.get("payment_method") or "cod").strip().lower()
     shipping_method = (form_data.get("shipping_method") or "").strip()
+    submission_key = (form_data.get("checkout_submission_key") or "").strip()
 
     if payment_method == "vnpay":
         return {"ok": False, "error": "VNPay đang tạm thời tắt. Vui lòng chọn COD hoặc chuyển khoản ngân hàng."}
@@ -453,6 +610,7 @@ def place_order_from_cart(user, form_data, remote_addr, vnpay_return_url):
         remote_addr=remote_addr,
         vnpay_return_url=vnpay_return_url,
         clear_cart_after=True,
+        submission_key=submission_key,
     )
 
 

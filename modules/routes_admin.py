@@ -224,18 +224,18 @@ def register_admin_routes(app):
         processing_orders = sum(status_map.get(status, 0) for status in PROCESSING_STATUSES)
         completed_orders = status_map.get("completed", 0)
         cancelled_orders = status_map.get("cancelled", 0) + status_map.get("refunded", 0) + status_map.get("returned", 0)
-        top_products = conn.execute(
+        product_sales = conn.execute(
             f"""
             SELECT product_name, SUM(qty) AS qty_sold, SUM(total_price) AS revenue
             FROM order_items
             JOIN orders ON orders.id = order_items.order_id
             WHERE orders.status IN ({status_placeholders})
             GROUP BY product_name
-            ORDER BY qty_sold DESC
-            LIMIT 5
+            ORDER BY qty_sold DESC, product_name ASC
             """,
             (*REVENUE_STATUSES,),
         ).fetchall()
+        total_products_sold = sum(row["qty_sold"] or 0 for row in product_sales)
         low_stock = conn.execute(
             """
             SELECT product_variants.*, products.name AS product_name
@@ -279,7 +279,8 @@ def register_admin_routes(app):
             processing_orders=processing_orders,
             completed_orders=completed_orders,
             cancelled_orders=cancelled_orders,
-            top_products=top_products,
+            product_sales=product_sales,
+            total_products_sold=total_products_sold,
             low_stock=low_stock,
             chart_labels=json.dumps(chart_labels),
             chart_orders=json.dumps(chart_orders),

@@ -29,7 +29,10 @@
 
 <div class="admin-grid" style="margin-top: 1.5rem;">
     <div class="admin-card">
-        <h3>Top sản phẩm bán chạy</h3>
+        <div class="admin-card-heading">
+            <h3>Sản phẩm đã bán</h3>
+            <span class="badge">{{ total_products_sold }} cái</span>
+        </div>
         <table class="admin-table">
             <thead>
                 <tr>
@@ -39,7 +42,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% for item in top_products %}
+                {% for item in product_sales %}
                 <tr>
                     <td>{{ item.product_name }}</td>
                     <td>{{ item.qty_sold }}</td>

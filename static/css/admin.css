@@ -160,6 +160,18 @@ a:hover {
     margin-top: 0;
 }
 
+.admin-card-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.admin-card-heading h3 {
+    margin: 0;
+}
+
 .admin-table {
     width: 100%;
     border-collapse: collapse;

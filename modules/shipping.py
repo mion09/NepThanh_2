@@ -12,8 +12,8 @@ DEFAULT_ITEM_WEIGHT_GRAMS = 300
 DEFAULT_ITEM_LENGTH_CM = 30
 DEFAULT_ITEM_WIDTH_CM = 25
 DEFAULT_ITEM_HEIGHT_CM = 3
-DEFAULT_FALLBACK_FEE = 30000
-FIXED_SHIPPING_FEE = 30000
+DEFAULT_FALLBACK_FEE = 0
+FIXED_SHIPPING_FEE = 0
 
 WAREHOUSE_PROVINCE = "Hà Nội"
 WAREHOUSE_DISTRICT = os.environ.get("SHIPPING_ORIGIN_DISTRICT", "Quận Hai Bà Trưng")
@@ -46,11 +46,11 @@ def _fixed_shipping_quote():
         "carrier": "shop",
         "carrier_label": "Shop",
         "service": "fixed",
-        "service_label": "Đồng giá vận chuyển",
+        "service_label": "Free ship",
         "fee": FIXED_SHIPPING_FEE,
         "estimated": True,
         "source": "fixed",
-        "message": "Phí vận chuyển cố định 30.000 đ cho mọi đơn hàng.",
+        "message": "Free ship cho mọi đơn hàng.",
     }
 
 

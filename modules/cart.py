@@ -2,12 +2,7 @@ from datetime import datetime, timezone
 
 from flask import session
 
-from modules.db import _get_db, _get_setting
-from modules.promotions import (
-    apply_promotion_to_price,
-    best_promotion_for_price,
-    get_product_promotion_map,
-)
+from modules.db import _get_db
 from modules.utils import (
     _find_static_asset,
     _normalize_static_path,
@@ -19,7 +14,7 @@ from modules.utils import (
 SESSION_CART_KEY = "guest_cart_items"
 SESSION_COUPON_KEY = "guest_cart_coupon"
 SESSION_SHIPPING_KEY = "guest_cart_shipping_zone"
-DEFAULT_SHIPPING_FEE = 30000
+DEFAULT_SHIPPING_FEE = 0
 _CART_TABLES_READY = False
 
 SHIPPING_ZONES = {
@@ -545,9 +540,6 @@ def _build_items(conn, item_map):
     if not item_map:
         return []
     variant_rows = _load_variant_rows(conn, list(item_map.keys()))
-    promotion_map = get_product_promotion_map(
-        conn, [row["product_id"] for row in variant_rows.values()]
-    )
     items = []
     for variant_id, requested_qty in item_map.items():
         variant = variant_rows.get(variant_id)
@@ -564,10 +556,7 @@ def _build_items(conn, item_map):
             if variant["price"] is not None
             else _parse_int(variant["base_price"], 0)
         )
-        promotion = best_promotion_for_price(
-            regular_unit_price, promotion_map.get(variant["product_id"])
-        )
-        unit_price = apply_promotion_to_price(regular_unit_price, promotion)
+        unit_price = regular_unit_price
         image = _resolve_product_image(
             variant["image"],
             variant["product_slug"],
@@ -585,8 +574,8 @@ def _build_items(conn, item_map):
                 "stock_qty": stock_qty,
                 "unit_price": unit_price,
                 "regular_unit_price": regular_unit_price,
-                "promotion_name": promotion["name"] if promotion else None,
-                "has_promotion": bool(promotion and unit_price < regular_unit_price),
+                "promotion_name": None,
+                "has_promotion": False,
                 "line_total": unit_price * qty,
                 "image": image,
             }
@@ -750,5 +739,5 @@ def _estimate_shipping(conn, discounted_subtotal, shipping_zone):
     return {
         "fee": DEFAULT_SHIPPING_FEE,
         "estimated": True,
-        "label": "Phí vận chuyển cố định",
+        "label": "Free ship",
     }

@@ -675,7 +675,7 @@ def _try_fast_common_response(message, catalog):
 
     if any(w in norm for w in ["ship", "phi ship", "giao hang", "van chuyen"]):
         return {
-            "reply": "Phí ship hiện tại là **đồng giá 30,000 VND cho mọi đơn hàng**. Shop sẽ xác nhận và giao trong khoảng 1-3 ngày.",
+            "reply": "Shop đang **free ship 0 VND cho mọi đơn hàng**. Shop sẽ xác nhận và giao trong khoảng 1-3 ngày.",
             "intent": "ask_policy",
             "action": "none",
             "entities": {"shipping_fee": CHATBOT_SHIPPING_FEE},
@@ -799,7 +799,7 @@ def _is_keep_current_intent(text):
 
 
 ORDER_STEPS = ["product", "size", "color", "name", "phone", "address", "confirm", "edit"]
-CHATBOT_SHIPPING_FEE = 30000
+CHATBOT_SHIPPING_FEE = 0
 
 
 def _get_draft(session_id):

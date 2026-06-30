@@ -18,6 +18,7 @@ from datetime import datetime
 
 from modules.config import DB_PATH
 from modules.db import _get_db, _ensure_column
+from modules.shipping import calculate_address_shipping_fee
 
 
 def _fmt_price(value):
@@ -675,7 +676,7 @@ def _try_fast_common_response(message, catalog):
 
     if any(w in norm for w in ["ship", "phi ship", "giao hang", "van chuyen"]):
         return {
-            "reply": "Shop đang **free ship 0 VND cho mọi đơn hàng**. Shop sẽ xác nhận và giao trong khoảng 1-3 ngày.",
+            "reply": "Shop **free ship cho địa chỉ Hà Nội**. Các tỉnh/thành khác phí ship **đồng giá 30,000 VND/đơn**. Shop sẽ xác nhận và giao trong khoảng 1-3 ngày.",
             "intent": "ask_policy",
             "action": "none",
             "entities": {"shipping_fee": CHATBOT_SHIPPING_FEE},
@@ -799,7 +800,7 @@ def _is_keep_current_intent(text):
 
 
 ORDER_STEPS = ["product", "size", "color", "name", "phone", "address", "confirm", "edit"]
-CHATBOT_SHIPPING_FEE = 0
+CHATBOT_SHIPPING_FEE = 30000
 
 
 def _get_draft(session_id):
@@ -836,11 +837,11 @@ def _delete_draft(session_id):
 
 
 def _confirm_order_summary(session_id, data):
-    ship_fee = CHATBOT_SHIPPING_FEE
+    address = data.get("address", "")
+    ship_fee = calculate_address_shipping_fee(address)
     data["ship_fee"] = ship_fee
     price = data.get("price") or 0
     total = int(price) + ship_fee
-    address = data.get("address", "")
 
     _save_draft(session_id, "confirm", data)
     return {

@@ -12,8 +12,8 @@ DEFAULT_ITEM_WEIGHT_GRAMS = 300
 DEFAULT_ITEM_LENGTH_CM = 30
 DEFAULT_ITEM_WIDTH_CM = 25
 DEFAULT_ITEM_HEIGHT_CM = 3
-DEFAULT_FALLBACK_FEE = 0
-FIXED_SHIPPING_FEE = 0
+DEFAULT_FALLBACK_FEE = 30000
+FLAT_PROVINCE_SHIPPING_FEE = 30000
 
 WAREHOUSE_PROVINCE = "Hà Nội"
 WAREHOUSE_DISTRICT = os.environ.get("SHIPPING_ORIGIN_DISTRICT", "Quận Hai Bà Trưng")
@@ -24,7 +24,7 @@ WAREHOUSE_ADDRESS = os.environ.get("SHIPPING_ORIGIN_ADDRESS", "Kho Hà Nội")
 def quote_shipping_options(conn, cart, address, selected_method=None, payment_method="cod"):
     # Tạm thời tắt báo giá API hãng, gồm "GHN - tiêu chuẩn".
     # Khi cần bật lại, khôi phục các dòng gọi _quote_ghn/_quote_ghtk/_quote_viettelpost bên dưới.
-    return [_fixed_shipping_quote()]
+    return [_fixed_shipping_quote(cart, address)]
 
 
 def select_shipping_quote(conn, cart, address, method_id, payment_method="cod"):
@@ -40,17 +40,55 @@ def select_shipping_quote(conn, cart, address, method_id, payment_method="cod"):
     return None, "Phương thức vận chuyển không còn khả dụng cho địa chỉ này."
 
 
-def _fixed_shipping_quote():
+def calculate_shop_shipping_fee(items=None, address=None):
+    total_qty = sum(max(_parse_int(item.get("qty"), 0), 0) for item in (items or []))
+    if total_qty <= 0:
+        return 0
+    return calculate_address_shipping_fee(address)
+
+
+def calculate_address_shipping_fee(address=None):
+    if is_hanoi_address(address):
+        return 0
+    return FLAT_PROVINCE_SHIPPING_FEE
+
+
+def is_hanoi_address(address=None):
+    if isinstance(address, dict):
+        province_text = _normalize_text(address.get("province"))
+        if province_text and ("ha noi" in province_text or province_text in {"hn", "hanoi"}):
+            return True
+        address_text = _normalize_text(
+            " ".join(
+                str(address.get(key) or "")
+                for key in ("line1", "line2", "ward", "district", "province")
+            )
+        )
+    else:
+        address_text = _normalize_text(address)
+    return "ha noi" in address_text or address_text in {"hn", "hanoi"}
+
+
+def _fixed_shipping_quote(cart=None, address=None):
+    items = (cart or {}).get("items", [])
+    fee = calculate_shop_shipping_fee(items, address)
+    if fee:
+        service_label = "Đồng giá tỉnh"
+        message = "Phí ship đồng giá 30.000 đ cho đơn ngoài Hà Nội."
+    else:
+        service_label = "Free ship"
+        message = "Free ship cho địa chỉ Hà Nội."
     return {
         "id": "shop:fixed",
         "carrier": "shop",
         "carrier_label": "Shop",
         "service": "fixed",
-        "service_label": "Free ship",
-        "fee": FIXED_SHIPPING_FEE,
+        "service_label": service_label,
+        "fee": fee,
         "estimated": True,
         "source": "fixed",
-        "message": "Free ship cho mọi đơn hàng.",
+        "message": message,
+        "free_province": "Hà Nội",
     }
 
 

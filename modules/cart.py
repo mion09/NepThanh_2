@@ -8,6 +8,7 @@ from modules.promotions import (
     best_promotion_for_price,
     get_product_promotion_map,
 )
+from modules.shipping import calculate_shop_shipping_fee
 from modules.utils import (
     _find_static_asset,
     _normalize_static_path,
@@ -19,7 +20,6 @@ from modules.utils import (
 SESSION_CART_KEY = "guest_cart_items"
 SESSION_COUPON_KEY = "guest_cart_coupon"
 SESSION_SHIPPING_KEY = "guest_cart_shipping_zone"
-DEFAULT_SHIPPING_FEE = 0
 _CART_TABLES_READY = False
 
 SHIPPING_ZONES = {
@@ -170,7 +170,12 @@ def get_cart_snapshot(user):
                 session.pop(SESSION_SHIPPING_KEY, None)
                 session.modified = True
 
-        shipping_result = _estimate_shipping(conn, subtotal - discount_amount, shipping_zone)
+        shipping_result = _estimate_shipping(
+            conn,
+            subtotal - discount_amount,
+            shipping_zone,
+            items,
+        )
         total = max(subtotal - discount_amount + shipping_result["fee"], 0)
 
         return {
@@ -746,9 +751,10 @@ def _eligible_product_ids(conn, coupon_id, applies_to):
     return set()
 
 
-def _estimate_shipping(conn, discounted_subtotal, shipping_zone):
+def _estimate_shipping(conn, discounted_subtotal, shipping_zone, items=None):
+    fee = calculate_shop_shipping_fee(items or [])
     return {
-        "fee": DEFAULT_SHIPPING_FEE,
+        "fee": fee,
         "estimated": True,
-        "label": "Free ship",
+        "label": "Free ship Hà Nội" if fee == 0 else "Tạm tính ship tỉnh",
     }

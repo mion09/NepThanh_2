@@ -3,6 +3,11 @@ from datetime import datetime, timezone
 from flask import session
 
 from modules.db import _get_db
+from modules.promotions import (
+    apply_promotion_to_price,
+    best_promotion_for_price,
+    get_product_promotion_map,
+)
 from modules.utils import (
     _find_static_asset,
     _normalize_static_path,
@@ -540,6 +545,9 @@ def _build_items(conn, item_map):
     if not item_map:
         return []
     variant_rows = _load_variant_rows(conn, list(item_map.keys()))
+    promotion_map = get_product_promotion_map(
+        conn, [row["product_id"] for row in variant_rows.values()]
+    )
     items = []
     for variant_id, requested_qty in item_map.items():
         variant = variant_rows.get(variant_id)
@@ -556,7 +564,10 @@ def _build_items(conn, item_map):
             if variant["price"] is not None
             else _parse_int(variant["base_price"], 0)
         )
-        unit_price = regular_unit_price
+        promotion = best_promotion_for_price(
+            regular_unit_price, promotion_map.get(variant["product_id"])
+        )
+        unit_price = apply_promotion_to_price(regular_unit_price, promotion)
         image = _resolve_product_image(
             variant["image"],
             variant["product_slug"],
@@ -574,8 +585,8 @@ def _build_items(conn, item_map):
                 "stock_qty": stock_qty,
                 "unit_price": unit_price,
                 "regular_unit_price": regular_unit_price,
-                "promotion_name": None,
-                "has_promotion": False,
+                "promotion_name": promotion["name"] if promotion else None,
+                "has_promotion": bool(promotion and unit_price < regular_unit_price),
                 "line_total": unit_price * qty,
                 "image": image,
             }

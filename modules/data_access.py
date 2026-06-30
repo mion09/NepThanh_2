@@ -4,6 +4,11 @@ import time
 
 from modules.config import BASE_DIR
 from modules.db import _get_db
+from modules.promotions import (
+    apply_promotion_to_price,
+    best_promotion_for_price,
+    get_product_promotion_map,
+)
 from modules.utils import (
     _find_static_asset,
     _is_external_url,
@@ -312,7 +317,8 @@ def _map_character(row):
 def _map_product(row, image_url, promotions=None):
     image = _product_image_for(row, image_url)
     regular_price = row["base_price"] or 0
-    sale_price = regular_price
+    promotion = best_promotion_for_price(regular_price, promotions or [])
+    sale_price = apply_promotion_to_price(regular_price, promotion)
     status = row["status"] or "active"
     status_labels = {
         "active": "Đang bán",
@@ -326,10 +332,10 @@ def _map_product(row, image_url, promotions=None):
         "name": row["name"],
         "price": sale_price,
         "regular_price": regular_price,
-        "promotion_name": None,
-        "promotion_discount_type": None,
-        "promotion_value": None,
-        "has_promotion": False,
+        "promotion_name": promotion["name"] if promotion else None,
+        "promotion_discount_type": promotion["discount_type"] if promotion else None,
+        "promotion_value": promotion["value"] if promotion else None,
+        "has_promotion": bool(promotion and sale_price < regular_price),
         "character_id": row["character_id"],
         "image": image,
         "short_description": row["description"] or "",
@@ -400,13 +406,16 @@ def load_products():
         image_rows = conn.execute(
             "SELECT product_id, url FROM product_images ORDER BY is_primary DESC, sort_order, id"
         ).fetchall()
+        promotion_map = get_product_promotion_map(
+            conn, [row["id"] for row in products]
+        )
         conn.close()
         image_map = {}
         for row in image_rows:
             if row["product_id"] not in image_map and row["url"]:
                 image_map[row["product_id"]] = row["url"]
         return [
-            _map_product(row, image_map.get(row["id"]))
+            _map_product(row, image_map.get(row["id"]), promotion_map.get(row["id"]))
             for row in products
         ]
 
@@ -427,13 +436,16 @@ def load_all_products():
         image_rows = conn.execute(
             "SELECT product_id, url FROM product_images ORDER BY is_primary DESC, sort_order, id"
         ).fetchall()
+        promotion_map = get_product_promotion_map(
+            conn, [row["id"] for row in products]
+        )
         conn.close()
         image_map = {}
         for row in image_rows:
             if row["product_id"] not in image_map and row["url"]:
                 image_map[row["product_id"]] = row["url"]
         return [
-            _map_product(row, image_map.get(row["id"]))
+            _map_product(row, image_map.get(row["id"]), promotion_map.get(row["id"]))
             for row in products
         ]
 

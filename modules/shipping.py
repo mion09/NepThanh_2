@@ -48,15 +48,15 @@ def calculate_shop_shipping_fee(items=None, address=None):
 
 
 def calculate_address_shipping_fee(address=None):
-    if is_hanoi_address(address):
+    if is_thach_that_address(address):
         return 0
     return FLAT_PROVINCE_SHIPPING_FEE
 
 
-def is_hanoi_address(address=None):
+def is_thach_that_address(address=None):
     if isinstance(address, dict):
-        province_text = _normalize_text(address.get("province"))
-        if province_text and ("ha noi" in province_text or province_text in {"hn", "hanoi"}):
+        district_text = _normalize_text(address.get("district"))
+        if district_text and "thach that" in district_text:
             return True
         address_text = _normalize_text(
             " ".join(
@@ -66,7 +66,7 @@ def is_hanoi_address(address=None):
         )
     else:
         address_text = _normalize_text(address)
-    return "ha noi" in address_text or address_text in {"hn", "hanoi"}
+    return "thach that" in address_text
 
 
 def _fixed_shipping_quote(cart=None, address=None):
@@ -74,10 +74,10 @@ def _fixed_shipping_quote(cart=None, address=None):
     fee = calculate_shop_shipping_fee(items, address)
     if fee:
         service_label = "Đồng giá tỉnh"
-        message = "Phí ship đồng giá 30.000 đ cho đơn ngoài Hà Nội."
+        message = "Phí ship đồng giá 30.000 đ cho đơn ngoài Thạch Thất."
     else:
         service_label = "Free ship"
-        message = "Free ship cho địa chỉ Hà Nội."
+        message = "Free ship cho địa chỉ Thạch Thất."
     return {
         "id": "shop:fixed",
         "carrier": "shop",
@@ -88,7 +88,7 @@ def _fixed_shipping_quote(cart=None, address=None):
         "estimated": True,
         "source": "fixed",
         "message": message,
-        "free_province": "Hà Nội",
+        "free_area": "Thạch Thất",
     }
 
 
@@ -331,24 +331,14 @@ def _quote_viettelpost(package, address, order_value, payment_method):
 
 def _fallback_quotes(conn, address, package):
     base_fee = _parse_int(_get_setting(conn, "shipping_fee", str(DEFAULT_FALLBACK_FEE)), DEFAULT_FALLBACK_FEE)
-    province_norm = _normalize_text(address.get("province"))
-    district_norm = _normalize_text(address.get("district"))
-    if "ha noi" in province_norm or province_norm in {"hn", "hanoi"}:
-        fee = base_fee
-        service = "Nội thành Hà Nội"
+    if is_thach_that_address(address):
+        fee = 0
+        service = "Thạch Thất"
         days = "1-2 ngày"
-    elif any(key in district_norm for key in ["huyen", "thi xa"]) or any(
-        key in province_norm for key in ["cao bang", "dien bien", "lai chau", "son la", "ha giang"]
-    ):
-        fee = int(round(base_fee * 1.55))
-        service = "Tỉnh/vùng xa"
-        days = "3-6 ngày"
     else:
-        fee = int(round(base_fee * 1.25))
-        service = "Liên tỉnh"
+        fee = base_fee
+        service = "Đồng giá"
         days = "2-4 ngày"
-    if package["weight"] > 500:
-        fee += ((package["weight"] - 501) // 500 + 1) * 5000
     return [
         {
             "id": "shop:fallback",

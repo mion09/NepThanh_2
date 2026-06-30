@@ -676,7 +676,7 @@ def _try_fast_common_response(message, catalog):
 
     if any(w in norm for w in ["ship", "phi ship", "giao hang", "van chuyen"]):
         return {
-            "reply": "Shop **free ship cho địa chỉ Hà Nội**. Các tỉnh/thành khác phí ship **đồng giá 30,000 VND/đơn**. Shop sẽ xác nhận và giao trong khoảng 1-3 ngày.",
+            "reply": "Shop **free ship cho địa chỉ Thạch Thất**. Các khu vực khác phí ship **đồng giá 30,000 VND/đơn**. Shop sẽ xác nhận và giao trong khoảng 1-3 ngày.",
             "intent": "ask_policy",
             "action": "none",
             "entities": {"shipping_fee": CHATBOT_SHIPPING_FEE},

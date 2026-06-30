@@ -756,5 +756,5 @@ def _estimate_shipping(conn, discounted_subtotal, shipping_zone, items=None):
     return {
         "fee": fee,
         "estimated": True,
-        "label": "Free ship Hà Nội" if fee == 0 else "Tạm tính ship tỉnh",
+        "label": "Free ship Thạch Thất" if fee == 0 else "Tạm tính phí ship",
     }

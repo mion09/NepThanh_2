@@ -5,6 +5,7 @@ import time
 from modules.config import BASE_DIR
 from modules.db import _get_db
 from modules.promotions import (
+    active_promotion_cache_signature,
     apply_promotion_to_price,
     best_promotion_for_price,
     get_product_promotion_map,
@@ -386,6 +387,12 @@ def load_characters():
 
 
 def load_products():
+    conn = _get_db()
+    try:
+        promotion_signature = active_promotion_cache_signature(conn)
+    finally:
+        conn.close()
+
     def loader():
         conn = _get_db()
         products = conn.execute(
@@ -419,10 +426,16 @@ def load_products():
             for row in products
         ]
 
-    return _get_cached_content("products_active", loader)
+    return _get_cached_content(f"products_active:{promotion_signature}", loader)
 
 
 def load_all_products():
+    conn = _get_db()
+    try:
+        promotion_signature = active_promotion_cache_signature(conn)
+    finally:
+        conn.close()
+
     def loader():
         conn = _get_db()
         products = conn.execute(
@@ -449,4 +462,4 @@ def load_all_products():
             for row in products
         ]
 
-    return _get_cached_content("products_all", loader)
+    return _get_cached_content(f"products_all:{promotion_signature}", loader)

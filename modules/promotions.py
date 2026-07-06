@@ -1,6 +1,12 @@
-from datetime import datetime
+import os
+from datetime import datetime, timedelta
 
 from modules.utils import _parse_int
+
+
+SHOP_TIME_OFFSET_HOURS = int(
+    (os.environ.get("SHOP_TIME_OFFSET_HOURS") or "7").strip() or "7"
+)
 
 
 def apply_promotion_to_price(price, promotion):
@@ -58,7 +64,7 @@ def best_promotion_for_price(price, promotions):
 
 
 def _load_active_promotions(conn):
-    now = datetime.utcnow().isoformat()
+    now = _promotion_now().isoformat()
     return conn.execute(
         """
         SELECT *
@@ -70,6 +76,30 @@ def _load_active_promotions(conn):
         """,
         (now, now),
     ).fetchall()
+
+
+def active_promotion_cache_signature(conn):
+    promotions = _load_active_promotions(conn)
+    return "|".join(
+        ":".join(
+            str(promotion[key] or "")
+            for key in (
+                "id",
+                "name",
+                "promo_type",
+                "discount_type",
+                "value",
+                "category_id",
+                "starts_at",
+                "ends_at",
+            )
+        )
+        for promotion in promotions
+    ) or "none"
+
+
+def _promotion_now():
+    return datetime.utcnow() + timedelta(hours=SHOP_TIME_OFFSET_HOURS)
 
 
 def _load_product_category_map(conn, product_ids):

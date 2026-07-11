@@ -6,8 +6,10 @@
     <h1>Đặt hàng thành công</h1>
     {% if bank_transfer %}
     <p>Đơn hàng đã được ghi nhận. Vui lòng chuyển khoản đúng số tiền và nội dung bên dưới để nhân viên xác nhận thanh toán.</p>
-    {% else %}
+    {% elif order.email %}
     <p>Cảm ơn bạn đã đặt hàng. Chúng tôi đã gửi email xác nhận đơn hàng.</p>
+    {% else %}
+    <p>Cảm ơn bạn đã đặt hàng. Chúng tôi đã ghi nhận đơn hàng của bạn.</p>
     {% endif %}
     {% else %}
     <h1>Thanh toán chưa thành công</h1>

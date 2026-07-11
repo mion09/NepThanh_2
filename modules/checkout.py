@@ -581,7 +581,7 @@ def place_order_from_cart(user, form_data, remote_addr, vnpay_return_url):
         return {"ok": False, "error": "Chuyển khoản ngân hàng chưa được cấu hình."}
     if not recipient_name:
         return {"ok": False, "error": "Vui lòng nhập tên người nhận."}
-    if not email or "@" not in email:
+    if email and "@" not in email:
         return {"ok": False, "error": "Vui lòng nhập email hợp lệ để nhận thông báo đơn hàng."}
     if not phone:
         return {"ok": False, "error": "Vui lòng nhập số điện thoại người nhận."}

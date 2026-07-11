@@ -71,7 +71,9 @@
         <h3 style="margin-top: 1.5rem;">Lịch sử trạng thái</h3>
         <ul>
             {% for event in events %}
-            <li>{{ event.created_at }} · {{ event.status }} · {{ event.note }} ({{ event.admin_name or event.admin_email }})</li>
+            <li>
+                {{ event.created_at }} · {{ event.status }}{% if event.note %} · {{ event.note }}{% endif %}{% if event.admin_name or event.admin_email %} ({{ event.admin_name or event.admin_email }}){% endif %}
+            </li>
             {% else %}
             <li class="muted">Chưa có lịch sử.</li>
             {% endfor %}

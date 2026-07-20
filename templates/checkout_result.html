@@ -71,3 +71,32 @@
     </div>
 </section>
 {% endblock %}
+
+{% block scripts %}
+{% if is_success and order %}
+<script>
+    (function () {
+        var analytics = window.NepThanhAnalytics;
+        if (!analytics) return;
+        var transactionId = {{ order.order_number|tojson }};
+        analytics.trackOnce("purchase", transactionId, {
+            transaction_id: transactionId,
+            currency: "VND",
+            value: {{ order.total|int }},
+            shipping: {{ order.shipping_fee|int }},
+            items: [
+                {% for item in items %}
+                {
+                    item_id: {{ ((item.sku or item.product_id)|string)|tojson }},
+                    item_name: {{ item.product_name|tojson }},
+                    item_variant: {{ (item.variant_label or '')|tojson }},
+                    price: {{ item.unit_price|int }},
+                    quantity: {{ item.qty|int }}
+                }{% if not loop.last %},{% endif %}
+                {% endfor %}
+            ]
+        });
+    })();
+</script>
+{% endif %}
+{% endblock %}

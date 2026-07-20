@@ -422,3 +422,28 @@
 })();
 </script>
 {% endblock %}
+
+{% block scripts %}
+<script>
+    (function () {
+        var analytics = window.NepThanhAnalytics;
+        if (!analytics) return;
+        analytics.trackOnce("begin_checkout", {{ checkout_submission_key|tojson }}, {
+            currency: "VND",
+            value: {{ (cart.subtotal - cart.discount_amount)|int }},
+            {% if cart.coupon_code %}coupon: {{ cart.coupon_code|tojson }},{% endif %}
+            items: [
+                {% for item in cart["items"] %}
+                {
+                    item_id: {{ (item.product_id|string)|tojson }},
+                    item_name: {{ item.product_name|tojson }},
+                    item_variant: {{ ((item.size or 'Free') ~ ' / ' ~ (item.color or ''))|trim|tojson }},
+                    price: {{ item.unit_price|int }},
+                    quantity: {{ item.qty|int }}
+                }{% if not loop.last %},{% endif %}
+                {% endfor %}
+            ]
+        });
+    })();
+</script>
+{% endblock %}

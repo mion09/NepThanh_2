@@ -25,6 +25,27 @@
         function gtag(){dataLayer.push(arguments);}
         gtag("js", new Date());
         gtag("config", "{{ google_analytics_id }}");
+        window.NepThanhAnalytics = {
+            track: function (eventName, params) {
+                if (!eventName || typeof window.gtag !== "function") return false;
+                window.gtag("event", eventName, params || {});
+                return true;
+            },
+            trackOnce: function (eventName, eventId, params) {
+                if (!eventId) return this.track(eventName, params);
+                var storageKey = "nepthanh.ga4." + eventName + "." + eventId;
+                var tracked = false;
+                try {
+                    if (window.localStorage.getItem(storageKey)) return false;
+                    tracked = this.track(eventName, params);
+                    if (!tracked) return false;
+                    window.localStorage.setItem(storageKey, String(Date.now()));
+                    return true;
+                } catch (error) {
+                    return tracked || this.track(eventName, params);
+                }
+            }
+        };
     </script>
     {% endif %}
 </head>
@@ -521,6 +542,18 @@
                 sessionId = null;
                 msgs.innerHTML = '<div class="chat-msg bot"><div class="chat-avatar">🎭</div><div class="chat-bubble">Chào bạn! Mình có thể giúp gì? 😊</div></div>';
                 chips.style.display = 'flex';
+            });
+        })();
+    </script>
+    {% endif %}
+    {% if google_analytics_id and ga4_events %}
+    <script>
+        (function () {
+            var analytics = window.NepThanhAnalytics;
+            if (!analytics) return;
+            var events = {{ ga4_events|tojson }};
+            events.forEach(function (event) {
+                analytics.track(event.name, event.params || {});
             });
         })();
     </script>

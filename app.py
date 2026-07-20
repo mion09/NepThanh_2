@@ -5,7 +5,7 @@ Flask application for the Nếp Thanh – Dòng chảy thanh âm Việt projec
 import os
 from datetime import datetime
 
-from flask import Flask, render_template, request, url_for
+from flask import Flask, render_template, request, session, url_for
 from dotenv import load_dotenv
 from werkzeug.middleware.proxy_fix import ProxyFix
 load_dotenv(override=True)
@@ -34,6 +34,9 @@ init_db()
 @app.context_processor
 def inject_globals():
     current_user = _get_current_user()
+    ga4_events = session.pop("_ga4_events", [])
+    if not isinstance(ga4_events, list):
+        ga4_events = []
     return {
         "site_name": "Nếp Thanh – Dòng chảy thanh âm Việt",
         "current_year": datetime.now().year,
@@ -41,6 +44,7 @@ def inject_globals():
         "is_admin": _is_admin_user(current_user),
         "google_enabled": _google_enabled(),
         "google_analytics_id": os.environ.get("GOOGLE_ANALYTICS_ID", "G-H3C8YJ190C").strip(),
+        "ga4_events": ga4_events,
         "cart_count": get_cart_item_count(current_user),
     }
 

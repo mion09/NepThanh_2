@@ -77,6 +77,19 @@ from modules.utils import (
 )
 
 
+def _queue_ga4_event(name, params=None):
+    """Queue a privacy-safe GA4 event for the next rendered page."""
+    event_name = (name or "").strip()
+    if not event_name:
+        return
+    events = session.get("_ga4_events", [])
+    if not isinstance(events, list):
+        events = []
+    events.append({"name": event_name, "params": params or {}})
+    session["_ga4_events"] = events[-10:]
+    session.modified = True
+
+
 def register_public_routes(app):
     @app.route("/")
     def home():
@@ -345,7 +358,55 @@ def register_public_routes(app):
     def cart_add():
         variant_id = _parse_int(request.form.get("variant_id"), 0)
         quantity = _parse_int(request.form.get("quantity"), 1)
-        ok, message = add_item_to_cart(_get_current_user(), variant_id, quantity)
+        user = _get_current_user()
+        before_cart = get_cart_snapshot(user)
+        before_quantity = next(
+            (
+                item["qty"]
+                for item in before_cart["items"]
+                if item["variant_id"] == variant_id
+            ),
+            0,
+        )
+        ok, message = add_item_to_cart(user, variant_id, quantity)
+        if ok:
+            after_cart = get_cart_snapshot(user)
+            tracked_item = next(
+                (
+                    item
+                    for item in after_cart["items"]
+                    if item["variant_id"] == variant_id
+                ),
+                None,
+            )
+            added_quantity = max(
+                (tracked_item["qty"] if tracked_item else 0) - before_quantity,
+                0,
+            )
+            if tracked_item and added_quantity:
+                _queue_ga4_event(
+                    "add_to_cart",
+                    {
+                        "currency": "VND",
+                        "value": tracked_item["unit_price"] * added_quantity,
+                        "items": [
+                            {
+                                "item_id": str(tracked_item["product_id"]),
+                                "item_name": tracked_item["product_name"],
+                                "item_variant": " / ".join(
+                                    value
+                                    for value in (
+                                        tracked_item["size"],
+                                        tracked_item["color"],
+                                    )
+                                    if value
+                                ),
+                                "price": tracked_item["unit_price"],
+                                "quantity": added_quantity,
+                            }
+                        ],
+                    },
+                )
         flash(message, "success" if ok else "error")
         return _redirect_cart_back()
 
@@ -855,6 +916,7 @@ def register_public_routes(app):
                 user_id = _create_user(email, generate_password_hash(password))
                 session["user_id"] = user_id
                 merge_guest_cart_into_user(user_id)
+                _queue_ga4_event("sign_up", {"method": "email"})
                 if _send_verification_for_user(user_id, email):
                     flash("Đã tạo tài khoản. Vui lòng kiểm tra email để xác thực.", "success")
                 else:
@@ -958,6 +1020,7 @@ def register_public_routes(app):
         if not email:
             return redirect(url_for("login", error="Google không trả về email hợp lệ."))
         user = _get_user_by_email(email)
+        is_new_user = user is None
         if user:
             user_id = user["id"]
             user_info = {
@@ -983,6 +1046,8 @@ def register_public_routes(app):
             }
         session["user_id"] = user_id
         merge_guest_cart_into_user(user_id)
+        if is_new_user:
+            _queue_ga4_event("sign_up", {"method": "google"})
         session.pop("google_oauth_state", None)
         next_url = _safe_next_url(session.pop("google_oauth_next", None))
         if _is_admin_user(user_info):

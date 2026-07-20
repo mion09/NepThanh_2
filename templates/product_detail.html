@@ -107,6 +107,7 @@
                     <select name="variant_id" id="variant_id" class="pd-select" required>
                         {% for variant in variants %}
                         <option value="{{ variant.id }}" data-color="{{ variant_color_keys.get(variant.id, (variant.color or '')|lower) }}"
+                            data-size="{{ variant.size or 'Free' }}" data-variant-color="{{ variant.color or '' }}"
                             data-base-disabled="{% if variant.stock_qty <=0 %}true{% else %}false{% endif %}" {% if
                             variant.stock_qty <=0 %}disabled{% endif %}>
                             {{ variant.size }} - {% if variant.stock_qty > 0 %}Còn {{ variant.stock_qty }} sản phẩm{%
@@ -888,4 +889,39 @@
         });
     });
 </script>
+{% endblock %}
+
+{% block scripts %}
+{% if not product.is_coming_soon %}
+<script>
+    (function () {
+        var analytics = window.NepThanhAnalytics;
+        if (!analytics) return;
+        var variantSelect = document.getElementById("variant_id");
+        var product = {
+            item_id: {{ (product.id|string)|tojson }},
+            item_name: {{ product.name|tojson }},
+            item_category: {{ (product.collection or '')|tojson }},
+            price: {{ product.price|int }}
+        };
+
+        function selectedItem() {
+            var option = variantSelect && variantSelect.options[variantSelect.selectedIndex];
+            var item = Object.assign({}, product);
+            if (option) {
+                item.item_variant = [option.dataset.size, option.dataset.variantColor]
+                    .filter(Boolean).join(" / ");
+            }
+            return item;
+        }
+
+        analytics.track("view_item", {
+            currency: "VND",
+            value: product.price,
+            items: [selectedItem()]
+        });
+
+    })();
+</script>
+{% endif %}
 {% endblock %}
